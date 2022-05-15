@@ -10,6 +10,9 @@ using namespace std;
     int width;
     int height;
 
+    int x_c;
+    int y_c;
+
 class ImageProcess {
 private :
     Img* srcImg;
@@ -106,7 +109,7 @@ int ImageProcess::dilotation(){/*дилотация картинки, результат записать в proces
             if (this->srcImg->srcImg[i*this->srcImg->width + j] == 1  /*this->mask->srcImg[4]*/){
                 for (int m = 0; m < 3; m++){
                     for (int n = 0; n < 3; n++){
-                        if (this->mask->srcImg[m*3 + n] == 1){
+                        if (this->mask->srcImg[(m-1+this->mask->y_c)*3 + this->mask->x_c +n-1] == 1){
                             if (i-1+m >= 0 & j-1+n >= 0 & i-1+m < this->srcImg->height & j-1+n < this->srcImg->width){
                                 this->processedImg->srcImg[(i-1+m)*this->srcImg->width + j-1+n] = 1;
                             }
@@ -136,7 +139,7 @@ int ImageProcess::erosion(){/*эрозия картинки, результат записать в processedImg
                 for (int m = 0; m < 3; m++){
                     for (int n = 0; n < 3; n++){
                         if (i-1+m >= 0 & j-1+n >= 0 & i-1+m < this->srcImg->height & j-1+n < this->srcImg->width){
-                            if (this->srcImg->srcImg[(i-1+m)*this->srcImg->width + j-1+n] >= this->mask->srcImg[m*3 + n]){
+                            if (this->srcImg->srcImg[(i-1+m)*this->srcImg->width + j-1+n] >= this->mask->srcImg[(m-1+this->mask->y_c)*3 + this->mask->x_c +n-1]){
                                 k += 1;
                             //  cout << k << "\t" << this->srcImg->srcImg[(i-1+m)*this->srcImg->width + j-1+n] << endl;
                             }
@@ -163,18 +166,35 @@ int ImageProcess::erosion(){/*эрозия картинки, результат записать в processedImg
 
 int ImageProcess::loadImgFromFile(const char* fileName, int format){
     ifstream file(fileName);
+    cout << "File was opened" << endl;
     int w, h;
     file >> w;
     file >> h;
-    char str[h][w+1];
-    for (int i = 0; i < h; i++){
+    char str[h*(w+1)];
+ /*   if (format == 1){
+    for (int i = 1; i < h+1; i++){
         file.getline(str[i], sizeof(str[i]));
+  }
     }
+    else{
+        file.getline(str[1], sizeof(str[1]));
+    }*/
+
+    for (int i = 1; i < h+1; i++){
+        for (int j = 0; j < w; j++){
+          //  cout << "str[" << i << "][" << j << "]";
+          //  file.getline(str[i], sizeof(char));
+            char ch = file.get();
+            str[i*w + 1] = ch;
+        }
+  }
+
     file.close();
+    cout << "File was closed" << endl;
 
     for(int i = 1; i < h+1; i++){
         for(int j = 0; j < w; j++){
-            if (str[i][j] == 0x30){
+            if (str[i*w+j] == 0x30){
                 this->srcImg->srcImg[(i-1)*w+j] = 0;
                 this->processedImg->srcImg[(i-1)*w+j] = 0;
             }
@@ -190,11 +210,20 @@ int ImageProcess::loadImgFromFile(const char* fileName, int format){
 int ImageProcess::saveImgToFile(const char* fileName, int format){
     ofstream file (fileName);
     file << this->srcImg->width << "\t" << this->srcImg->height << endl;
+    if (format == 1){
     for(int i = 0; i < this->srcImg->height; i++){
         for(int j = 0; j < this->srcImg->width; j++){
             file << this->srcImg->srcImg[i*this->srcImg->width+j];
         }
         file << endl;
+    }
+    }
+    else {
+        for(int i = 0; i < this->srcImg->height; i++){
+            for(int j = 0; j < this->srcImg->width; j++){
+                file << this->srcImg->srcImg[i*this->srcImg->width+j];
+            }
+        }
     }
     file.close();
     cout << "File was saved" << endl;
@@ -205,9 +234,10 @@ int main(int argc, char *argv[])
     QCoreApplication a(argc, argv);
 
     Img _mask(3,3);
-    _mask.srcImg[0] = 1;_mask.srcImg[1] = 1;_mask.srcImg[2] = 1;
+    _mask.srcImg[0] = 0;_mask.srcImg[1] = 1;_mask.srcImg[2] = 0;
     _mask.srcImg[3] = 1;_mask.srcImg[4] = 1;_mask.srcImg[5] = 1;
-    _mask.srcImg[6] = 1;_mask.srcImg[7] = 1;_mask.srcImg[8] = 1;
+    _mask.srcImg[6] = 0;_mask.srcImg[7] = 1;_mask.srcImg[8] = 0;
+    _mask.x_c = 1; _mask.y_c = 1;
 
     class ImageProcess b("gost56.txt");
     b.updateMask(_mask);
@@ -215,7 +245,7 @@ int main(int argc, char *argv[])
         b.erosion();
         b.updateSrcImg();
     }
-    b.saveImgToFile("erosion500600rectanglemask10.txt", 1);
+    b.saveImgToFile("erosiondynamicmask1.txt", 1);
 
     class ImageProcess c("gost56.txt");
     c.updateMask(_mask);
@@ -223,9 +253,8 @@ int main(int argc, char *argv[])
         c.dilotation();
         c.updateSrcImg();
     }
+    c.saveImgToFile("dilotationdynamicmask1.txt", 1);
   //  cout << "Poka rabotaet" << endl;
-
-    c.saveImgToFile("dilotation500600rectanglemask10.txt", 1);
 
     return a.exec();
 }

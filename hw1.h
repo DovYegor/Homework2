@@ -3,6 +3,9 @@ struct Img {
     int width;
     int height;
 
+    int x_c;
+    int y_c;
+
     Img();
     Img(int w, int h);
     Img(const int* src, int w, int h);

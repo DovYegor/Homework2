@@ -41,10 +41,10 @@ public :
     int updateSrcImg();
 
     /*дилотация картинки, результат записать в processedImg*/
-    int dilotation();
+    int dilatation(int srcImg);
 
     /*эрозия картинки, результат записать в processedImg*/
-    int erosion();
+    int erosion(int srcImg);
 
     /*
         загрузить/сохранить из файла с именем fileName картинку
@@ -52,6 +52,6 @@ public :
                         format - формат файла 	0 - последовательность 0 и 1, без перехода на новую строку
                                                 1 - последовательность 0 и 1, с переходом на новую строку
     */
-    int loadImgFromFile(const char* fileName, int format = 1);
-    int saveImgToFile(const char* fileName, int format = 1);
+    int loadImgFromFile(const char* fileName, int format);
+    int saveImgToFile(const char* fileName, int format);
 };

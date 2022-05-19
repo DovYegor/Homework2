@@ -5,21 +5,6 @@
 
 using namespace std;
 
-/*struct Img {
-    int* srcImg;
-    int width;
-    int height;
-
-    int x_c;
-    int y_c;
-
-class ImageProcess {
-private :
-    Img* srcImg;
-    Img* processedImg;
-    Img* mask;
-*/
-
 Img::Img(){
     srcImg = new int[1000*1000];
     width = 1000;
@@ -27,9 +12,9 @@ Img::Img(){
 }
 
 Img::Img(int w, int h){
-    srcImg = new int[w*h];
     width = w;
     height = h;
+    srcImg = new int[w*h];
 }
 
 Img::Img(const int* src, int w, int h){
@@ -47,29 +32,28 @@ Img::~Img(){
 
 ImageProcess::ImageProcess(){}
 
-ImageProcess::ImageProcess(int w, int h){/* выделяется память для картинки размера w*h */
+ImageProcess::ImageProcess(int w, int h){
     this->srcImg = new Img(w, h);
     this->processedImg = new Img(w, h);
     this->mask = new Img (3, 3);
 }
 
-ImageProcess::ImageProcess(const Img* img){/* выделяется память для картинки размера w*h и копируется картинка*/
+ImageProcess::ImageProcess(const Img* img){
     this->srcImg = new Img(img->srcImg, img->width, img->height);
     this->processedImg = new Img(img->width, img->height);
     this->mask = new Img (3, 3);
 }
 
-ImageProcess::ImageProcess(const char* fileName){/* выделяется память для картинки копируется картинка из файла*/
+ImageProcess::ImageProcess(const char* fileName){
     int w, h;
     ifstream file(fileName);
     file >> w;
     file >> h;
     file.close();
-    //cout << w << h << endl << endl;
     this->srcImg = new Img(w, h);
     this->processedImg = new Img(w, h);
     this->mask = new Img(3, 3);
-    ImageProcess::loadImgFromFile(fileName);
+    ImageProcess::loadImgFromFile(fileName, 1);
 }
 
 ImageProcess::~ImageProcess(){
@@ -78,89 +62,104 @@ ImageProcess::~ImageProcess(){
     delete mask;
 }
 
-int ImageProcess::updateMask(const Img& mask){/*задание маски*/
+int ImageProcess::updateMask(const Img& mask){
     this->mask->srcImg = mask.srcImg;
-
- /*   mask.srcImg[0] = 0; mask.srcImg[1] = 1; mask.srcImg[2] = 0;
-    mask.srcImg[3] = 1; mask.srcImg[4] = 1; mask.srcImg[5] = 1;
-    mask.srcImg[6] = 0; mask.srcImg[7] = 1; mask.srcImg[8] = 0; */
+    this->mask->x_c = mask.x_c;
+    this->mask->y_c = mask.y_c;
 
     cout << "Mask was updated" << endl;
 }
 
-int ImageProcess::updateSrcImg(){/*перезаписать исходную картинку картинкой, которая была получена в результате дилотации и/или эрозии*/
+int ImageProcess::updateSrcImg(){
     for (int i = 0; i < this->srcImg->width*this->srcImg->height; i++){
         this->srcImg->srcImg[i] = this->processedImg->srcImg[i];
     }
     cout << "SrcImage was updated" << endl;
 }
 
-int ImageProcess::dilotation(){/*дилотация картинки, результат записать в processedImg*/
-    for (int i = 0; i < this->srcImg->width*this->srcImg->height; i++){
-        this->processedImg->srcImg[i] = this->srcImg->srcImg[i];
+int ImageProcess::dilatation(int srcImg){
+    if (srcImg == 1){
+        for (int i = 0; i < this->srcImg->width*this->srcImg->height; i++){
+            this->processedImg->srcImg[i] = this->srcImg->srcImg[i];
+        }
     }
 
-    /*this->mask->srcImg[0] = 0; this->mask->srcImg[1] = 1; this->mask->srcImg[2] = 0;
-    this->mask->srcImg[3] = 1; this->mask->srcImg[4] = 1; this->mask->srcImg[5] = 1;
-    this->mask->srcImg[6] = 0; this->mask->srcImg[7] = 1; this->mask->srcImg[8] = 0; */
+    int h = this->srcImg->height;
+    int w = this->srcImg->width;
+    int cy = this->mask->y_c;
+    int cx = this->mask->x_c;
 
-    for (int i = 0; i < this->srcImg->height; i++){
-        for (int j = 0; j < this->srcImg->width; j++){
-            if (this->srcImg->srcImg[i*this->srcImg->width + j] == 1  /*this->mask->srcImg[4]*/){
-                for (int m = 0; m < 3; m++){
-                    for (int n = 0; n < 3; n++){
-                        if (this->mask->srcImg[(m-1+this->mask->y_c)*3 + this->mask->x_c +n-1] == 1){
-                            if (i-1+m >= 0 & j-1+n >= 0 & i-1+m < this->srcImg->height & j-1+n < this->srcImg->width){
-                                this->processedImg->srcImg[(i-1+m)*this->srcImg->width + j-1+n] = 1;
-                            }
-                        }
-                    }
-                }
+    int arr[(h+4)*(w+4)];
+    for (int i = 0; i < h+4; i++){
+        for (int j = 0; j < w+4; j++){
+            if (i<2 || j<2 || i>=h+2 || j>=w+2){
+                arr[i*(w+4) + j] = 0;
+            }
+            else{
+                arr[i*(w+4) + j] = this->processedImg->srcImg[(i-2)*w + (j-2)];
             }
         }
     }
 
-    cout << "Dilotation was completed" << endl;
-}
+    for (int i = 2; i < h+2; i++){
+        for (int j = 2; j < w+2; j++){
+            if (arr[i*(w+4) + j] == 1){
+                for (int m = 0; m < 3; m++){
+                    for (int n = 0; n < 3; n++){
+                        if (this->mask->srcImg[m*3 + n] == 1){
+                                this->processedImg->srcImg[(i-2+m-cy)*w + j-2+n-cx] = 1;
 
-int ImageProcess::erosion(){/*эрозия картинки, результат записать в processedImg*/
-    for (int i = 0; i < this->srcImg->width*this->srcImg->height; i++){
-        this->processedImg->srcImg[i] = this->srcImg->srcImg[i];
+                        }
+                    }
+                }
+            }
+
+        }
     }
 
-    /*this->mask->srcImg[0] = 0; this->mask->srcImg[1] = 1; this->mask->srcImg[2] = 0;
-    this->mask->srcImg[3] = 1; this->mask->srcImg[4] = 1; this->mask->srcImg[5] = 1;
-    this->mask->srcImg[6] = 0; this->mask->srcImg[7] = 1; this->mask->srcImg[8] = 0; */
+    cout << "dilatation was completed" << endl;
+}
 
-    for (int i = 0; i < this->srcImg->height; i++){
-        for (int j = 0; j < this->srcImg->width; j++){
-            if (this->srcImg->srcImg[i*this->srcImg->width + j] == this->mask->srcImg[4]){
+int ImageProcess::erosion(int srcImg){
+    if (srcImg == 1){
+        for (int i = 0; i < this->srcImg->width*this->srcImg->height; i++){
+            this->processedImg->srcImg[i] = this->srcImg->srcImg[i];
+        }
+    }
+
+    int h = this->srcImg->height;
+    int w = this->srcImg->width;
+    int cy = this->mask->y_c;
+    int cx = this->mask->x_c;
+
+    int arr[(h+4)*(w+4)];
+    for (int i = 0; i < h+4; i++){
+        for (int j = 0; j < w+4; j++){
+            if (i<2 || j<2 || i>=h+2 || j>=w+2){
+                arr[i*w + j] = 1;
+            }
+            else{
+                arr[i*w + j] = this->processedImg->srcImg[(i-2)*w + (j-2)];
+            }
+        }
+    }
+    for (int i = 2; i < h+2; i++){
+        for (int j = 2; j < w+2; j++){
+            if (arr[i*w + j] == 1){
                 int k = 0;
                 for (int m = 0; m < 3; m++){
                     for (int n = 0; n < 3; n++){
-                        if (i-1+m >= 0 & j-1+n >= 0 & i-1+m < this->srcImg->height & j-1+n < this->srcImg->width){
-                            if (this->srcImg->srcImg[(i-1+m)*this->srcImg->width + j-1+n] >= this->mask->srcImg[(m-1+this->mask->y_c)*3 + this->mask->x_c +n-1]){
+                        if (arr[(i-cy+m)*w + j-cx+n] >= this->mask->srcImg[m*3 + n]){
                                 k += 1;
-                            //  cout << k << "\t" << this->srcImg->srcImg[(i-1+m)*this->srcImg->width + j-1+n] << endl;
-                            }
                         }
                     }
                 }
                 if (k < 9){
-                    this->processedImg->srcImg[i*this->srcImg->width + j] = 0;
+                    this->processedImg->srcImg[(i-2)*w + j-2] = 0;
                 }
             }
         }
     }
-/*
-    for (int i = 0; i < this->srcImg->width*this->srcImg->height; i++){
-        cout << this->srcImg->srcImg[i];
-    }
-
-    for (int i = 0; i < this->srcImg->width*this->srcImg->height; i++){
-        cout << this->processedImg->srcImg[i];
-    }
-*/
     cout << "Erosion was completed" << endl;
 }
 
@@ -170,37 +169,33 @@ int ImageProcess::loadImgFromFile(const char* fileName, int format){
     int w, h;
     file >> w;
     file >> h;
-    char str[h*(w+1)];
- /*   if (format == 1){
-    for (int i = 1; i < h+1; i++){
-        file.getline(str[i], sizeof(str[i]));
-  }
-    }
-    else{
-        file.getline(str[1], sizeof(str[1]));
-    }*/
+    file.get();
 
-    for (int i = 1; i < h+1; i++){
-        for (int j = 0; j < w; j++){
-          //  cout << "str[" << i << "][" << j << "]";
-          //  file.getline(str[i], sizeof(char));
+    char str[h*(w+1)];
+
+    for (int i = 0; i < h; i++){
+        for (int j = 0; j < w+1; j++){
             char ch = file.get();
-            str[i*w + 1] = ch;
+            str[i*(w+1) + j] = ch;
         }
   }
 
     file.close();
     cout << "File was closed" << endl;
 
-    for(int i = 1; i < h+1; i++){
-        for(int j = 0; j < w; j++){
-            if (str[i*w+j] == 0x30){
-                this->srcImg->srcImg[(i-1)*w+j] = 0;
-                this->processedImg->srcImg[(i-1)*w+j] = 0;
+    int v = 0;
+
+    for(int i = 0; i < h; i++){
+        for(int j = 0; j < w+1; j++){
+            if (str[i*(w+1)+j] == '0' /*0x30*/){
+                this->srcImg->srcImg[v] = 0;
+                this->processedImg->srcImg[v] = 0;
+                v++;
             }
-            else{
-                this->srcImg->srcImg[(i-1)*w+j] = 1;
-                this->processedImg->srcImg[(i-1)*w+j] = 1;
+            if (str[i*(w+1)+j] == '1' /*0x31*/){
+                this->srcImg->srcImg[v] = 1;
+                this->processedImg->srcImg[v] = 1;
+                v++;
             }
         }
     }
@@ -241,20 +236,22 @@ int main(int argc, char *argv[])
 
     class ImageProcess b("gost56.txt");
     b.updateMask(_mask);
-    for(int i = 0; i < 10; i++){
-        b.erosion();
-        b.updateSrcImg();
+    for(int i = 0; i < 5; i++){
+        b.erosion(0);
     }
-    b.saveImgToFile("erosiondynamicmask1.txt", 1);
+
+    b.updateSrcImg();
+    b.saveImgToFile("erosiondynamicmask56.txt", 1);
+    cout << "erosion has saved" << endl;
 
     class ImageProcess c("gost56.txt");
     c.updateMask(_mask);
-    for(int i = 0; i < 10; i++){
-        c.dilotation();
-        c.updateSrcImg();
+    for(int i = 0; i < 5; i++){
+        c.dilatation(0);
     }
-    c.saveImgToFile("dilotationdynamicmask1.txt", 1);
-  //  cout << "Poka rabotaet" << endl;
+    c.updateSrcImg();
+    c.saveImgToFile("dilatationdynamicmask56.txt", 1);
+    cout << "Dil saved" << endl;
 
     return a.exec();
 }
